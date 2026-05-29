@@ -11,7 +11,6 @@ import {
 import { useRouter } from "next/navigation";
 import { Monitor, DoorOpen, Radio, Users } from "lucide-react";
 
-// CHANGED: Strict UUID v1-v5 validator — gates the Join button.
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -25,7 +24,6 @@ export default function LandingHero() {
 
   const joinInputRef = useRef<HTMLInputElement>(null);
 
-  // CHANGED: Auto-focus the Join input when switching to that tab.
   useEffect(() => {
     if (tab === "join") {
       joinInputRef.current?.focus();
@@ -58,7 +56,6 @@ export default function LandingHero() {
     router.push(`/room/${joinId.toLowerCase()}?role=viewer&uid=${uid}`);
   }, [joinValid, joinId, router]);
 
-  // CHANGED: Auto-trim + auto-uppercase for readability; lowercased on submit for routing.
   const onJoinChange = (e: ChangeEvent<HTMLInputElement>) => {
     const cleaned = e.target.value.replace(/\s+/g, "").toUpperCase();
     setJoinId(cleaned);
@@ -74,33 +71,33 @@ export default function LandingHero() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4 py-12">
-      {/* CHANGED: Tighter hero — smaller pill and copy. */}
       <div className="mb-8 text-center">
-        <div className="mb-3 inline-flex items-center justify-center rounded-full bg-indigo-500/10 px-3 py-1">
-          <Radio className="mr-1.5 h-3.5 w-3.5 text-indigo-400" />
-          <span className="text-[12px] font-medium text-indigo-300">
+        {/* CHANGED: Accent pill — accent-subtle bg with ink text + accent icon. */}
+        <div className="mb-3 inline-flex items-center justify-center rounded-full bg-accent-subtle px-3 py-1">
+          <Radio className="mr-1.5 h-3.5 w-3.5 text-accent" />
+          <span className="text-[12px] font-medium text-ink">
             P2P Watch Party
           </span>
         </div>
-        <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
+        {/* CHANGED: Display font (Fraunces) on h1, ink → accent gradient on second line. */}
+        <h1 className="mb-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-5xl">
           Watch Together.
           <br />
-          <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-ink to-accent bg-clip-text text-transparent">
             Zero Uploads.
           </span>
         </h1>
-        <p className="mx-auto max-w-md text-sm text-zinc-400">
+        <p className="mx-auto max-w-md text-sm text-muted">
           Share your screen directly with a friend. Browser-to-browser, no servers in
           between.
         </p>
       </div>
 
-      {/* CHANGED: Single compact tabbed card replaces two separate sections. */}
-      <div className="w-full max-w-md overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/60 shadow-xl backdrop-blur-sm">
-        {/* Tabs */}
+      {/* CHANGED: Card surface on the warm palette — bg-surface with line border. */}
+      <div className="w-full max-w-md overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
         <div
           role="tablist"
-          className="grid grid-cols-2 border-b border-zinc-800 bg-zinc-950/40 text-sm font-medium"
+          className="grid grid-cols-2 border-b border-line text-sm font-medium"
         >
           <button
             role="tab"
@@ -108,8 +105,8 @@ export default function LandingHero() {
             onClick={() => setTab("create")}
             className={`flex items-center justify-center gap-2 px-3 py-3 transition-colors ${
               tab === "create"
-                ? "bg-indigo-500/10 text-indigo-300"
-                : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white"
+                ? "bg-accent-subtle text-accent"
+                : "text-muted hover:bg-elevated hover:text-ink"
             }`}
           >
             <Monitor className="h-4 w-4" />
@@ -121,8 +118,8 @@ export default function LandingHero() {
             onClick={() => setTab("join")}
             className={`flex items-center justify-center gap-2 px-3 py-3 transition-colors ${
               tab === "join"
-                ? "bg-violet-500/10 text-violet-300"
-                : "text-zinc-400 hover:bg-zinc-800/50 hover:text-white"
+                ? "bg-accent-subtle text-accent"
+                : "text-muted hover:bg-elevated hover:text-ink"
             }`}
           >
             <DoorOpen className="h-4 w-4" />
@@ -130,24 +127,23 @@ export default function LandingHero() {
           </button>
         </div>
 
-        {/* Panel */}
         <div className="p-5">
           {tab === "create" ? (
             <div className="space-y-4">
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-muted">
                 Create a private room, choose what to share, and send the link.
               </p>
+              {/* CHANGED: Primary button uses accent → accent-hover. */}
               <button
                 onClick={createRoom}
                 onKeyDown={onCreateKey}
-                // CHANGED: Disabled during creation to prevent double-submit.
                 disabled={isCreating}
                 autoFocus
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isCreating ? (
                   <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-canvas/40 border-t-canvas" />
                     Creating…
                   </>
                 ) : (
@@ -160,9 +156,10 @@ export default function LandingHero() {
             </div>
           ) : (
             <div className="space-y-3">
-              <label className="block text-xs text-zinc-400">
+              <label className="block text-xs text-muted">
                 Paste a room ID (UUID) to join.
               </label>
+              {/* CHANGED: Input on canvas bg with line border → accent focus. */}
               <input
                 ref={joinInputRef}
                 type="text"
@@ -173,23 +170,23 @@ export default function LandingHero() {
                 value={joinId}
                 onChange={onJoinChange}
                 onKeyDown={onJoinKey}
-                className={`w-full rounded-lg border bg-zinc-800 px-3 py-2.5 font-mono text-[12px] tracking-wide text-white placeholder-zinc-600 outline-none transition-colors focus:border-violet-500 focus:ring-1 focus:ring-violet-500 ${
+                className={`w-full rounded-lg border bg-canvas px-3 py-2.5 font-mono text-[12px] tracking-wide text-body placeholder:text-muted outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent ${
                   joinId.length === 0
-                    ? "border-zinc-700"
+                    ? "border-line"
                     : joinValid
-                      ? "border-emerald-500/50"
-                      : "border-red-500/40"
+                      ? "border-success/50"
+                      : "border-danger/50"
                 }`}
               />
               {joinId.length > 0 && !joinValid && (
-                <p className="text-[11px] text-red-400">
+                <p className="text-[11px] text-danger">
                   Not a valid room ID — expects a UUID.
                 </p>
               )}
               <button
                 onClick={joinRoom}
                 disabled={!joinValid}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-canvas transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Users className="h-3.5 w-3.5" />
                 Join Room
@@ -199,21 +196,21 @@ export default function LandingHero() {
         </div>
       </div>
 
-      {/* Features */}
-      <div className="mt-10 grid grid-cols-3 gap-6 text-center text-[11px] text-zinc-500">
-        <div>
-          <div className="mx-auto mb-1.5 h-6 w-6 rounded-full bg-zinc-800" />
-          End-to-End P2P
-        </div>
-        <div>
-          <div className="mx-auto mb-1.5 h-6 w-6 rounded-full bg-zinc-800" />
-          No Sign-Up
-        </div>
-        <div>
-          <div className="mx-auto mb-1.5 h-6 w-6 rounded-full bg-zinc-800" />
-          Zero Uploads
-        </div>
-      </div>
+      {/* CHANGED: Feature chips on elevated dots with muted labels. */}
+      {/*<div className="mt-10 grid grid-cols-3 gap-6 text-center text-[11px] text-muted">*/}
+      {/*  <div>*/}
+      {/*    <div className="mx-auto mb-1.5 h-6 w-6 rounded-full bg-elevated" />*/}
+      {/*    End-to-End P2P*/}
+      {/*  </div>*/}
+      {/*  <div>*/}
+      {/*    <div className="mx-auto mb-1.5 h-6 w-6 rounded-full bg-elevated" />*/}
+      {/*    No Sign-Up*/}
+      {/*  </div>*/}
+      {/*  <div>*/}
+      {/*    <div className="mx-auto mb-1.5 h-6 w-6 rounded-full bg-elevated" />*/}
+      {/*    Zero Uploads*/}
+      {/*  </div>*/}
+      {/*</div>*/}
     </div>
   );
 }

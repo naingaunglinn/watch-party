@@ -1,33 +1,73 @@
 @import "tailwindcss";
 
-@theme inline {
-  --color-background: #09090b;
-  --color-foreground: #fafafa;
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* CHANGED: New design system — warm off-white palette with burnt-orange accent.
+   Tokens map: bg/bg-subtle/bg-overlay → canvas/surface/elevated.
+   text-primary/secondary/muted → ink/body/muted.
+   Plus semantic state colors for success / warning / danger. */
+@theme {
+  /* Surfaces */
+  --color-canvas: #EFEEEA;
+  --color-surface: #E8E6E1;
+  --color-elevated: #DDD9D2;
+
+  /* Text */
+  --color-ink: #273F4F;
+  --color-body: #1B211A;
+  --color-muted: #6B7C88;
+
+  /* Accent */
+  --color-accent: #FE7743;
+  --color-accent-hover: #E5622F;
+  --color-accent-subtle: #FEE8DF;
+
+  /* Borders */
+  --color-line: #D4D0C9;
+
+  /* Semantic state */
+  --color-success: #2E7D32;
+  --color-success-soft: #E8F5E9;
+  --color-warning: #B45309;
+  --color-warning-soft: #FFF8E1;
+  --color-danger: #C62828;
+  --color-danger-soft: #FFEBEE;
+
+  /* Fonts — Fraunces for display, DM Sans for body. */
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-body: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-body);
+  font-family: var(--font-body);
 }
 
-/* Scrollbar styling for dark theme */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--color-ink);
+  letter-spacing: -0.01em;
+}
+
+/* CHANGED: Light-mode scrollbar tuned to the warm palette. */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #18181b;
+  background: var(--color-surface);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: var(--color-elevated);
   border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: var(--color-line);
+}
+
+/* CHANGED: Accent focus ring for keyboard-only focus on any focusable element. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
