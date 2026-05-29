@@ -93,23 +93,23 @@ function RoomPageInner() {
     enabled: !loading && !error && !!room,
   });
 
-  // Loading state
+  // CHANGED: Loading spinner on accent.
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500/30 border-t-indigo-500" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent/30 border-t-accent" />
       </div>
     );
   }
 
-  // Error state
+  // CHANGED: Error state uses danger icon, ink heading, muted description.
   if (error) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-red-400" />
-          <h1 className="text-xl font-semibold text-white">{error}</h1>
-          <p className="mt-2 text-sm text-zinc-500">
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-danger" />
+          <h1 className="font-display text-xl font-semibold text-ink">{error}</h1>
+          <p className="mt-2 text-sm text-muted">
             Please check the room link or create a new room.
           </p>
         </div>
@@ -150,7 +150,8 @@ export default function RoomPage() {
     <Suspense
       fallback={
         <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500/30 border-t-indigo-500" />
+          {/* CHANGED: Suspense spinner on accent. */}
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-accent/30 border-t-accent" />
         </div>
       }
     >

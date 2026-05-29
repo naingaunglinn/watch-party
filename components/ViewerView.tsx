@@ -23,9 +23,6 @@ interface Toast {
   tone: Tone;
 }
 
-// CHANGED: Toast derived from state transition — driven by an effect *cleanup*
-// scheduling a setState in a setTimeout, which is outside React's render path
-// and so does not trip the set-state-in-effect rule.
 function useTransitionToast(state: RTCPeerConnectionState) {
   const [toast, setToast] = useState<Toast | null>(null);
   const prevRef = useRef<RTCPeerConnectionState | null>(null);
@@ -46,7 +43,6 @@ function useTransitionToast(state: RTCPeerConnectionState) {
 
     if (!payload) return;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    // CHANGED: setState deferred via timeout 0 → runs outside the effect body.
     const showId = setTimeout(() => setToast(payload), 0);
     hideTimerRef.current = setTimeout(() => setToast(null), 2400);
     return () => {
@@ -73,13 +69,11 @@ export default function ViewerView({
 
   const toast = useTransitionToast(connectionState);
 
-  // CHANGED: srcObject lifecycle in an effect with explicit cleanup.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     if (remoteStream) {
       video.srcObject = remoteStream;
-      // CHANGED: Low-latency hints for mobile autoplay.
       video.playsInline = true;
       video.autoplay = true;
     }
@@ -90,14 +84,12 @@ export default function ViewerView({
     };
   }, [remoteStream]);
 
-  // CHANGED: Track real fullscreen state (e.g. ESC out).
   useEffect(() => {
     const handler = () => setFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", handler);
     return () => document.removeEventListener("fullscreenchange", handler);
   }, []);
 
-  // CHANGED: Countdown via interval — setState lives in interval callback (not effect body).
   useEffect(() => {
     if (connectionState !== "disconnected" && connectionState !== "failed") {
       const clear = setTimeout(() => setCountdown(null), 0);
@@ -140,51 +132,55 @@ export default function ViewerView({
     connectionState === "new" ||
     (!remoteStream && connectionState !== "failed");
 
+  // CHANGED: Toast tone → semantic state tokens.
+  const toastClass =
+    toast?.tone === "ok"
+      ? "bg-success-soft text-success"
+      : toast?.tone === "warn"
+        ? "bg-accent-subtle text-accent"
+        : toast?.tone === "error"
+          ? "bg-danger-soft text-danger"
+          : "bg-ink text-canvas";
+
   return (
     <div className="relative flex flex-1 flex-col">
-      {/* CHANGED: Slim toolbar header — was a full row before. */}
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-2">
+      {/* CHANGED: Toolbar on surface tone. */}
+      <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-violet-600">
-            <Monitor className="h-3.5 w-3.5 text-white" />
+          {/* CHANGED: Icon chip on ink so viewer reads as the "host's audience". */}
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-ink">
+            <Monitor className="h-3.5 w-3.5 text-canvas" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-[13px] font-semibold leading-tight text-white">
+            <h1 className="font-display text-[13px] font-semibold leading-tight text-ink">
               Viewer
             </h1>
-            <p className="truncate font-mono text-[10px] leading-tight text-zinc-500">
+            <p className="truncate font-mono text-[10px] leading-tight text-muted">
               {roomId}
             </p>
           </div>
         </div>
         {isLive && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          // CHANGED: Live chip per spec — accent dot on accent-subtle bg, ink text.
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-subtle px-2.5 py-1 text-[11px] font-medium text-ink">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
             Live
           </span>
         )}
       </div>
 
-      {/* CHANGED: Slim toast bar for connection-state transitions. */}
+      {/* Toast bar */}
       {toast && (
         <div
-          className={`flex items-center justify-center gap-2 px-4 py-1 text-[11px] font-medium ${
-            toast.tone === "ok"
-              ? "bg-emerald-500/15 text-emerald-300"
-              : toast.tone === "warn"
-                ? "bg-amber-500/15 text-amber-300"
-                : toast.tone === "error"
-                  ? "bg-red-500/15 text-red-300"
-                  : "bg-indigo-500/15 text-indigo-300"
-          }`}
+          className={`flex items-center justify-center gap-2 px-4 py-1 text-[11px] font-medium ${toastClass}`}
         >
           <span className="h-1.5 w-1.5 rounded-full bg-current" />
           {toast.label}
         </div>
       )}
 
-      {/* Video / status surface */}
-      <div className="relative flex flex-1 items-center justify-center bg-black">
+      {/* CHANGED: Stage on ink — deep teal contrasts the warm canvas. */}
+      <div className="relative flex flex-1 items-center justify-center bg-ink">
         {isLive ? (
           <div
             className="group relative flex h-full w-full items-center justify-center"
@@ -200,16 +196,16 @@ export default function ViewerView({
               style={{ maxHeight: "calc(100vh - 132px)" }}
             />
 
-            {/* CHANGED: Hover-only overlay controls — mute + fullscreen. */}
+            {/* CHANGED: Overlay controls — ink/75 with canvas text per spec. */}
             <div
-              className={`absolute bottom-3 right-3 flex items-center gap-1.5 rounded-md bg-black/55 px-1.5 py-1 backdrop-blur-sm transition-opacity ${
+              className={`absolute bottom-3 right-3 flex items-center gap-1.5 rounded-md bg-ink/75 px-1.5 py-1 backdrop-blur-sm transition-opacity ${
                 showOverlay ? "opacity-100" : "opacity-0"
               }`}
             >
               <button
                 onClick={() => setMuted((m) => !m)}
                 title={muted ? "Unmute (M)" : "Mute (M)"}
-                className="flex h-7 w-7 items-center justify-center rounded text-white transition-colors hover:bg-white/15"
+                className="flex h-7 w-7 items-center justify-center rounded text-canvas transition-colors hover:bg-accent/80"
               >
                 {muted ? (
                   <VolumeX className="h-3.5 w-3.5" />
@@ -220,7 +216,7 @@ export default function ViewerView({
               <button
                 onClick={toggleFullscreen}
                 title="Fullscreen (F)"
-                className="flex h-7 w-7 items-center justify-center rounded text-white transition-colors hover:bg-white/15"
+                className="flex h-7 w-7 items-center justify-center rounded text-canvas transition-colors hover:bg-accent/80"
               >
                 {fullscreen ? (
                   <Minimize className="h-3.5 w-3.5" />
@@ -231,33 +227,33 @@ export default function ViewerView({
             </div>
           </div>
         ) : (
-          // CHANGED: Compact skeleton block — never a blank screen.
+          // CHANGED: Skeleton on surface tones — sits inside the ink stage but reads light.
           <div className="flex w-full max-w-2xl flex-col items-center gap-3 px-6 py-12">
-            <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-zinc-900 via-zinc-800/40 to-zinc-900" />
+            <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-line bg-surface">
+              <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-surface via-elevated to-surface" />
               <div className="absolute inset-0 flex items-center justify-center">
                 {connectionState === "failed" ? (
-                  <AlertCircle className="h-8 w-8 text-red-400" />
+                  <AlertCircle className="h-8 w-8 text-danger" />
                 ) : (
                   <Radio
                     className={`h-8 w-8 ${
                       isConnecting
-                        ? "animate-pulse text-amber-400"
-                        : "text-zinc-600"
+                        ? "animate-pulse text-accent"
+                        : "text-muted"
                     }`}
                   />
                 )}
               </div>
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium text-white">
+              <p className="font-display text-sm font-medium text-canvas">
                 {connectionState === "failed"
                   ? "Connection failed"
                   : isConnecting
                     ? "Connecting to host…"
                     : "Waiting for host"}
               </p>
-              <p className="mt-0.5 text-[11px] text-zinc-500">
+              <p className="mt-0.5 text-[11px] text-canvas/70">
                 {connectionState === "failed"
                   ? "Ask the host to restart sharing."
                   : "The host hasn't started sharing yet."}
@@ -266,10 +262,10 @@ export default function ViewerView({
           </div>
         )}
 
-        {/* CHANGED: Host-disconnected banner with reconnect countdown. */}
+        {/* CHANGED: Reconnect banner uses accent palette (warm warning). */}
         {(connectionState === "disconnected" || connectionState === "failed") &&
           countdown !== null && (
-            <div className="absolute bottom-3 left-3 right-3 mx-auto max-w-md rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center text-[12px] text-amber-200 shadow-lg backdrop-blur-sm">
+            <div className="absolute bottom-3 left-3 right-3 mx-auto max-w-md rounded-lg border border-accent/40 bg-accent-subtle px-3 py-2 text-center text-[12px] text-accent shadow-lg">
               Host disconnected — auto-reconnecting in {countdown}s
             </div>
           )}

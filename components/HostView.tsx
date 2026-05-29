@@ -22,12 +22,12 @@ interface HostViewProps {
   onEndRoom?: () => void;
   isSharing: boolean;
   connectionState: RTCPeerConnectionState;
-  // CHANGED: New — surfaced from useWebRTC.
   connectionQuality: ConnectionQuality;
   roomId: string;
 }
 
-// CHANGED: Compact StatusBadge — dot + label, derived from connection state.
+// CHANGED: StatusBadge mapped to new design tokens.
+// "Live" follows the spec exactly: accent dot + ink text + accent-subtle bg.
 function StatusBadge({
   state,
 }: {
@@ -39,40 +39,40 @@ function StatusBadge({
   > = {
     connecting: {
       label: "Connecting",
-      dot: "bg-amber-400 animate-pulse",
-      text: "text-amber-300",
-      bg: "bg-amber-500/10",
+      dot: "bg-warning animate-pulse",
+      text: "text-warning",
+      bg: "bg-warning-soft",
     },
     connected: {
       label: "Live · 1 viewer",
-      dot: "bg-emerald-400",
-      text: "text-emerald-300",
-      bg: "bg-emerald-500/10",
+      dot: "bg-accent animate-pulse",
+      text: "text-ink",
+      bg: "bg-accent-subtle",
     },
     disconnected: {
       label: "Disconnected",
-      dot: "bg-red-400",
-      text: "text-red-300",
-      bg: "bg-red-500/10",
+      dot: "bg-danger",
+      text: "text-danger",
+      bg: "bg-danger-soft",
     },
     failed: {
       label: "Failed",
-      dot: "bg-red-400",
-      text: "text-red-300",
-      bg: "bg-red-500/10",
+      dot: "bg-danger",
+      text: "text-danger",
+      bg: "bg-danger-soft",
     },
     closed: {
       label: "Closed",
-      dot: "bg-zinc-500",
-      text: "text-zinc-400",
-      bg: "bg-zinc-700/40",
+      dot: "bg-muted",
+      text: "text-muted",
+      bg: "bg-elevated",
     },
   };
   const v = map[state] || {
     label: "Waiting",
-    dot: "bg-zinc-400",
-    text: "text-zinc-400",
-    bg: "bg-zinc-700/40",
+    dot: "bg-muted",
+    text: "text-muted",
+    bg: "bg-elevated",
   };
   return (
     <span
@@ -84,26 +84,26 @@ function StatusBadge({
   );
 }
 
-// CHANGED: Signal-strength icon from getStats-derived quality.
+// CHANGED: Signal-strength quality mapped to semantic state colors.
 function QualityIcon({ q }: { q: ConnectionQuality }) {
   const common = "h-3.5 w-3.5";
   if (q === "good")
     return (
-      <SignalHigh className={`${common} text-emerald-400`} aria-label="Good link" />
+      <SignalHigh className={`${common} text-success`} aria-label="Good link" />
     );
   if (q === "degraded")
     return (
       <SignalMedium
-        className={`${common} text-amber-400`}
+        className={`${common} text-accent`}
         aria-label="Degraded link"
       />
     );
   if (q === "poor")
     return (
-      <SignalLow className={`${common} text-red-400`} aria-label="Poor link" />
+      <SignalLow className={`${common} text-danger`} aria-label="Poor link" />
     );
   return (
-    <Signal className={`${common} text-zinc-500`} aria-label="Unknown link" />
+    <Signal className={`${common} text-muted`} aria-label="Unknown link" />
   );
 }
 
@@ -125,7 +125,6 @@ export default function HostView({
   const shareUrl =
     typeof window !== "undefined" ? `${window.location.origin}/room/${roomId}` : "";
 
-  // Silence unused warning — preserved for future preview hookup.
   useEffect(() => {
     void videoRef.current;
   }, []);
@@ -157,7 +156,6 @@ export default function HostView({
     onStopShare();
   };
 
-  // CHANGED: One action that stops the share and (optionally) tears down the room.
   const stopAndEnd = () => {
     setSelectedSurface(null);
     onStopShare();
@@ -166,17 +164,18 @@ export default function HostView({
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* CHANGED: Compact single-row toolbar replaces the verbose header. */}
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-800 px-4 py-2">
+      {/* CHANGED: Toolbar on surface tone with line divider. */}
+      <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-600">
-            <Share2 className="h-3.5 w-3.5 text-white" />
+          {/* CHANGED: Accent-tinted icon chip. */}
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent">
+            <Share2 className="h-3.5 w-3.5 text-canvas" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-[13px] font-semibold leading-tight text-white">
+            <h1 className="font-display text-[13px] font-semibold leading-tight text-ink">
               Host
             </h1>
-            <p className="truncate font-mono text-[10px] leading-tight text-zinc-500">
+            <p className="truncate font-mono text-[10px] leading-tight text-muted">
               {roomId}
             </p>
           </div>
@@ -187,22 +186,24 @@ export default function HostView({
           {connectionState === "connected" && (
             <QualityIcon q={connectionQuality} />
           )}
+          {/* CHANGED: Secondary button — canvas surface with line border. */}
           <button
             onClick={copyLink}
             title="Copy invite link"
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-[11px] font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
+            className="inline-flex items-center gap-1.5 rounded-md border border-line bg-canvas px-2 py-1 text-[11px] font-medium text-ink transition-colors hover:bg-elevated"
           >
             {copied ? (
-              <Check className="h-3 w-3 text-emerald-400" />
+              <Check className="h-3 w-3 text-success" />
             ) : (
               <Copy className="h-3 w-3" />
             )}
             {copied ? "Copied" : "Copy Link"}
           </button>
           {isSharing ? (
+            // CHANGED: Destructive action — danger token.
             <button
               onClick={stopAndEnd}
-              className="inline-flex items-center gap-1.5 rounded-md bg-red-600/15 px-2.5 py-1 text-[11px] font-semibold text-red-300 transition-colors hover:bg-red-600/25"
+              className="inline-flex items-center gap-1.5 rounded-md bg-danger-soft px-2.5 py-1 text-[11px] font-semibold text-danger transition-colors hover:bg-danger hover:text-canvas"
               title="Stop sharing and end the room"
             >
               <Square className="h-3 w-3 fill-current" />
@@ -215,28 +216,30 @@ export default function HostView({
       {/* Main */}
       <div className="flex flex-1 items-center justify-center p-5">
         {!isSharing ? (
-          <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 text-center">
-            <h2 className="mb-1 text-base font-semibold text-white">
+          // CHANGED: Picker card on surface tone with line border.
+          <div className="w-full max-w-lg rounded-xl border border-line bg-surface p-6 text-center shadow-sm">
+            <h2 className="mb-1 font-display text-base font-semibold text-ink">
               What would you like to share?
             </h2>
-            <p className="mb-5 text-xs text-zinc-400">
+            <p className="mb-5 text-xs text-muted">
               Direct browser-to-browser. Nothing is uploaded.
             </p>
             <div className="grid grid-cols-3 gap-2.5">
               {(
                 [
-                  { surface: "monitor", icon: Monitor, label: "Entire Screen", color: "text-indigo-400" },
-                  { surface: "window", icon: AppWindow, label: "Window", color: "text-violet-400" },
-                  { surface: "browser", icon: LayoutTemplate, label: "Browser Tab", color: "text-emerald-400" },
+                  { surface: "monitor", icon: Monitor, label: "Entire Screen" },
+                  { surface: "window", icon: AppWindow, label: "Window" },
+                  { surface: "browser", icon: LayoutTemplate, label: "Browser Tab" },
                 ] as const
-              ).map(({ surface, icon: Icon, label, color }) => (
+              ).map(({ surface, icon: Icon, label }) => (
                 <button
                   key={surface}
                   onClick={() => startShare(surface)}
-                  className="flex flex-col items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3 transition-all hover:border-indigo-500/50 hover:bg-zinc-800"
+                  // CHANGED: Surface tile on canvas with hover lifting to accent.
+                  className="flex flex-col items-center gap-2 rounded-lg border border-line bg-canvas p-3 transition-all hover:border-accent hover:bg-accent-subtle"
                 >
-                  <Icon className={`h-6 w-6 ${color}`} />
-                  <span className="text-[12px] font-medium text-zinc-200">
+                  <Icon className="h-6 w-6 text-accent" />
+                  <span className="text-[12px] font-medium text-ink">
                     {label}
                   </span>
                 </button>
@@ -245,25 +248,26 @@ export default function HostView({
           </div>
         ) : (
           <div className="flex w-full max-w-4xl flex-col items-center gap-3">
-            {/* CHANGED: Compact preview with overlay SHARING badge. */}
-            <div className="relative w-full overflow-hidden rounded-lg border border-zinc-700 bg-black">
-              <div className="flex items-center justify-center py-20 text-zinc-500">
+            {/* CHANGED: Video preview frame on ink bg with accent SHARING badge. */}
+            <div className="relative w-full overflow-hidden rounded-lg border border-line bg-ink">
+              <div className="flex items-center justify-center py-20 text-canvas/60">
                 <div className="text-center">
-                  <Monitor className="mx-auto mb-2 h-10 w-10 opacity-50" />
+                  <Monitor className="mx-auto mb-2 h-10 w-10 opacity-60" />
                   <p className="text-xs font-medium">
                     Sharing {selectedSurface}
                   </p>
                 </div>
               </div>
-              {/* CHANGED: Overlay live-badge. */}
-              <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-red-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+              {/* CHANGED: SHARING badge on accent per spec. */}
+              <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-canvas shadow">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-canvas" />
                 Sharing
               </span>
             </div>
+            {/* CHANGED: Stop button — secondary canvas pill. */}
             <button
               onClick={stopShare}
-              className="inline-flex items-center gap-2 rounded-md bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 transition-colors hover:bg-zinc-700"
+              className="inline-flex items-center gap-2 rounded-md border border-line bg-canvas px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-elevated"
             >
               <Square className="h-3.5 w-3.5" />
               Stop Sharing
