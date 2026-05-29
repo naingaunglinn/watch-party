@@ -23,6 +23,8 @@ interface HostViewProps {
   isSharing: boolean;
   connectionState: RTCPeerConnectionState;
   connectionQuality: ConnectionQuality;
+  // CHANGED: Host's own outgoing stream so they can preview what they're sharing.
+  localStream: MediaStream | null;
   roomId: string;
 }
 
@@ -114,6 +116,7 @@ export default function HostView({
   isSharing,
   connectionState,
   connectionQuality,
+  localStream,
   roomId,
 }: HostViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -125,9 +128,19 @@ export default function HostView({
   const shareUrl =
     typeof window !== "undefined" ? `${window.location.origin}/room/${roomId}` : "";
 
+  // CHANGED: Attach the local MediaStream to the preview <video>; clean up on swap.
   useEffect(() => {
-    void videoRef.current;
-  }, []);
+    const v = videoRef.current;
+    if (!v) return;
+    if (localStream) {
+      v.srcObject = localStream;
+      v.playsInline = true;
+      v.muted = true;
+    }
+    return () => {
+      if (v.srcObject === localStream) v.srcObject = null;
+    };
+  }, [localStream]);
 
   const copyLink = async () => {
     try {
@@ -248,16 +261,26 @@ export default function HostView({
           </div>
         ) : (
           <div className="flex w-full max-w-4xl flex-col items-center gap-3">
-            {/* CHANGED: Video preview frame on ink bg with accent SHARING badge. */}
+            {/* CHANGED: Live preview — renders the host's outgoing MediaStream. */}
             <div className="relative w-full overflow-hidden rounded-lg border border-line bg-ink">
-              <div className="flex items-center justify-center py-20 text-canvas/60">
-                <div className="text-center">
-                  <Monitor className="mx-auto mb-2 h-10 w-10 opacity-60" />
-                  <p className="text-xs font-medium">
-                    Sharing {selectedSurface}
-                  </p>
+              {localStream ? (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="block max-h-[60vh] w-full bg-ink"
+                />
+              ) : (
+                <div className="flex items-center justify-center py-20 text-canvas/60">
+                  <div className="text-center">
+                    <Monitor className="mx-auto mb-2 h-10 w-10 opacity-60" />
+                    <p className="text-xs font-medium">
+                      Sharing {selectedSurface}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
               {/* CHANGED: SHARING badge on accent per spec. */}
               <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-canvas shadow">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-canvas" />

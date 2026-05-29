@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Monitor,
   Volume2,
@@ -61,28 +61,34 @@ export default function ViewerView({
   connectionState,
   roomId,
 }: ViewerViewProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // CHANGED: Plain ref + a callback ref that attaches srcObject the instant the
+  // <video> element mounts. The previous useEffect-on-[remoteStream] approach lost
+  // the race because the <video> element doesn't render until connectionState ===
+  // "connected", but ontrack (which sets remoteStream) fires earlier — so when
+  // the element finally mounts, the effect's deps haven't changed and it doesn't
+  // re-run. A ref callback runs at mount/unmount/identity-change, which is what
+  // we actually want.
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const attachVideo = useCallback(
+    (el: HTMLVideoElement | null) => {
+      const prev = videoRef.current;
+      if (prev && prev !== el) prev.srcObject = null;
+      videoRef.current = el;
+      if (el && remoteStream) {
+        el.srcObject = remoteStream;
+        el.playsInline = true;
+        el.autoplay = true;
+      }
+    },
+    [remoteStream]
+  );
+
   const [muted, setMuted] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
 
   const toast = useTransitionToast(connectionState);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (remoteStream) {
-      video.srcObject = remoteStream;
-      video.playsInline = true;
-      video.autoplay = true;
-    }
-    return () => {
-      if (video.srcObject === remoteStream) {
-        video.srcObject = null;
-      }
-    };
-  }, [remoteStream]);
 
   useEffect(() => {
     const handler = () => setFullscreen(!!document.fullscreenElement);
@@ -188,7 +194,7 @@ export default function ViewerView({
             onMouseLeave={() => setShowOverlay(false)}
           >
             <video
-              ref={videoRef}
+              ref={attachVideo}
               autoPlay
               playsInline
               muted={muted}

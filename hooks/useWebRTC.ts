@@ -44,18 +44,19 @@ function applyPreferredVideoCodecs(pc: RTCPeerConnection) {
 }
 
 // CHANGED: Low-latency sender encoding params (30fps, high priority).
+// IMPORTANT: setParameters() requires preserving rid/active from getParameters() output —
+// replacing the encodings array wholesale throws InvalidModificationError. We patch in place.
 async function tuneVideoSender(pc: RTCPeerConnection) {
   try {
     const sender = pc.getSenders().find((s) => s.track?.kind === "video");
     if (!sender || typeof sender.setParameters !== "function") return;
     const params = sender.getParameters();
-    params.encodings = [
-      {
-        maxFramerate: 30,
-        networkPriority: "high",
-        priority: "high",
-      } as RTCRtpEncodingParameters,
-    ];
+    if (!params.encodings || params.encodings.length === 0) return;
+    for (const enc of params.encodings) {
+      enc.maxFramerate = 30;
+      (enc as RTCRtpEncodingParameters & { networkPriority?: string }).networkPriority = "high";
+      (enc as RTCRtpEncodingParameters & { priority?: string }).priority = "high";
+    }
     await sender.setParameters(params);
   } catch (err) {
     console.warn("[rtc] sender tune failed:", err);
@@ -66,6 +67,8 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  // CHANGED: Expose localStream so the host can render their own preview.
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [connectionState, setConnectionState] =
     useState<RTCPeerConnectionState>("new");
   const [isSharing, setIsSharing] = useState(false);
@@ -139,10 +142,14 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
     const pc = new RTCPeerConnection(PC_CONFIG);
 
     pc.onconnectionstatechange = () => {
+      console.log("[rtc] connectionState →", pc.connectionState);
       setConnectionState(pc.connectionState);
       if (pc.connectionState === "connected") {
         iceRestartedRef.current = false;
         startQualityMonitor(pc);
+        // CHANGED: Apply low-latency encoding params once the link is up.
+        // Doing this pre-offer can throw in some browsers and break the SDP exchange.
+        void tuneVideoSender(pc);
       }
       if (
         pc.connectionState === "closed" ||
@@ -183,6 +190,7 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
 
     if (role === "viewer") {
       pc.ontrack = (event) => {
+        console.log("[rtc] viewer ontrack — streams:", event.streams?.length);
         if (event.streams && event.streams[0]) {
           setRemoteStream(event.streams[0]);
         }
@@ -208,6 +216,8 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
 
         const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
         localStreamRef.current = stream;
+        // CHANGED: Publish localStream so the host preview can render it.
+        setLocalStream(stream);
         setIsSharing(true);
 
         const pc = createPeerConnection();
@@ -216,23 +226,26 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
           pc.addTrack(track, stream);
         });
 
-        // CHANGED: Apply codec preferences + sender tuning after tracks added.
+        // CHANGED: Codec prefs only. Sender tune deferred to onconnectionstatechange=connected.
         applyPreferredVideoCodecs(pc);
-        await tuneVideoSender(pc);
 
         stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+          console.log("[rtc] host track ended (browser stop-sharing)");
           setIsSharing(false);
+          setLocalStream(null);
           try {
             pc.close();
           } catch (err) {
             console.error("[rtc] pc.close on track-end error:", err);
           }
           pcRef.current = null;
+          localStreamRef.current = null;
           stopQualityMonitor();
         });
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
+        console.log("[rtc] host → offer sent");
 
         await onSignalRef.current({
           type: "offer",
@@ -242,6 +255,7 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
       } catch (error) {
         console.error("[rtc] startSharing failed:", error);
         setIsSharing(false);
+        setLocalStream(null);
       }
     },
     [createPeerConnection, stopQualityMonitor]
@@ -259,6 +273,7 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
         return;
       }
       try {
+        console.log("[rtc] viewer ← offer received");
         const pc = createPeerConnection();
         await pc.setRemoteDescription(new RTCSessionDescription(offer));
         hasRemoteDescRef.current = true;
@@ -274,6 +289,7 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
+        console.log("[rtc] viewer → answer sent");
 
         await onSignalRef.current({
           type: "answer",
@@ -299,8 +315,12 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
         return;
       }
       try {
+        console.log("[rtc] host ← answer received");
         const pc = pcRef.current;
-        if (!pc) return;
+        if (!pc) {
+          console.warn("[rtc] host got answer but no pcRef.current");
+          return;
+        }
         await pc.setRemoteDescription(new RTCSessionDescription(answer));
         hasRemoteDescRef.current = true;
 
@@ -350,6 +370,8 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
     }
     pcRef.current = null;
     localStreamRef.current = null;
+    // CHANGED: Clear localStream state alongside the ref.
+    setLocalStream(null);
     setRemoteStream(null);
     setIsSharing(false);
     setConnectionState("new");
@@ -374,6 +396,8 @@ export function useWebRTC({ role, onSignal }: UseWebRTCOptions) {
     handleAnswer,
     handleIceCandidate,
     remoteStream,
+    // CHANGED: Expose localStream for the host preview.
+    localStream,
     connectionState,
     connectionQuality,
     isSharing,
