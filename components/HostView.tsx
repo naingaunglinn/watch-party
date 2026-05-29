@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Monitor,
   AppWindow,
@@ -13,6 +14,7 @@ import {
   SignalHigh,
   SignalMedium,
   SignalLow,
+  ArrowLeft,
 } from "lucide-react";
 import { ConnectionQuality, DisplaySurface } from "@/lib/types";
 
@@ -119,11 +121,18 @@ export default function HostView({
   localStream,
   roomId,
 }: HostViewProps) {
+  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [copied, setCopied] = useState(false);
   const [selectedSurface, setSelectedSurface] = useState<DisplaySurface | null>(
     null
   );
+
+  // CHANGED: Leave the room — stops any active share, then navigates home.
+  const leaveRoom = () => {
+    if (isSharing) onStopShare();
+    router.push("/");
+  };
 
   const shareUrl =
     typeof window !== "undefined" ? `${window.location.origin}/room/${roomId}` : "";
@@ -180,6 +189,14 @@ export default function HostView({
       {/* CHANGED: Toolbar on surface tone with line divider. */}
       <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
+          {/* CHANGED: Leave button — back arrow returns to landing page. */}
+          <button
+            onClick={leaveRoom}
+            title="Leave room"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
           {/* CHANGED: Accent-tinted icon chip. */}
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent">
             <Share2 className="h-3.5 w-3.5 text-canvas" />

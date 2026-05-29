@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Monitor,
   Volume2,
@@ -9,6 +10,7 @@ import {
   Minimize,
   AlertCircle,
   Radio,
+  ArrowLeft,
 } from "lucide-react";
 
 interface ViewerViewProps {
@@ -61,6 +63,9 @@ export default function ViewerView({
   connectionState,
   roomId,
 }: ViewerViewProps) {
+  const router = useRouter();
+  // CHANGED: Leave the room — navigates back to landing page.
+  const leaveRoom = () => router.push("/");
   // CHANGED: Plain ref + a callback ref that attaches srcObject the instant the
   // <video> element mounts. The previous useEffect-on-[remoteStream] approach lost
   // the race because the <video> element doesn't render until connectionState ===
@@ -153,6 +158,14 @@ export default function ViewerView({
       {/* CHANGED: Toolbar on surface tone. */}
       <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
+          {/* CHANGED: Leave button — back arrow returns to landing page. */}
+          <button
+            onClick={leaveRoom}
+            title="Leave room"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
           {/* CHANGED: Icon chip on ink so viewer reads as the "host's audience". */}
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-ink">
             <Monitor className="h-3.5 w-3.5 text-canvas" />
