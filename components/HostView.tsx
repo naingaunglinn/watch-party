@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Monitor,
   AppWindow,
@@ -13,6 +14,7 @@ import {
   SignalHigh,
   SignalMedium,
   SignalLow,
+  ArrowLeft,
 } from "lucide-react";
 import { ConnectionQuality, DisplaySurface } from "@/lib/types";
 
@@ -23,6 +25,8 @@ interface HostViewProps {
   isSharing: boolean;
   connectionState: RTCPeerConnectionState;
   connectionQuality: ConnectionQuality;
+  // CHANGED: Host's own outgoing stream so they can preview what they're sharing.
+  localStream: MediaStream | null;
   roomId: string;
 }
 
@@ -114,20 +118,38 @@ export default function HostView({
   isSharing,
   connectionState,
   connectionQuality,
+  localStream,
   roomId,
 }: HostViewProps) {
+  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [copied, setCopied] = useState(false);
   const [selectedSurface, setSelectedSurface] = useState<DisplaySurface | null>(
     null
   );
 
+  // CHANGED: Leave the room — stops any active share, then navigates home.
+  const leaveRoom = () => {
+    if (isSharing) onStopShare();
+    router.push("/");
+  };
+
   const shareUrl =
     typeof window !== "undefined" ? `${window.location.origin}/room/${roomId}` : "";
 
+  // CHANGED: Attach the local MediaStream to the preview <video>; clean up on swap.
   useEffect(() => {
-    void videoRef.current;
-  }, []);
+    const v = videoRef.current;
+    if (!v) return;
+    if (localStream) {
+      v.srcObject = localStream;
+      v.playsInline = true;
+      v.muted = true;
+    }
+    return () => {
+      if (v.srcObject === localStream) v.srcObject = null;
+    };
+  }, [localStream]);
 
   const copyLink = async () => {
     try {
@@ -167,6 +189,14 @@ export default function HostView({
       {/* CHANGED: Toolbar on surface tone with line divider. */}
       <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
+          {/* CHANGED: Leave button — back arrow returns to landing page. */}
+          <button
+            onClick={leaveRoom}
+            title="Leave room"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
           {/* CHANGED: Accent-tinted icon chip. */}
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent">
             <Share2 className="h-3.5 w-3.5 text-canvas" />
@@ -248,16 +278,26 @@ export default function HostView({
           </div>
         ) : (
           <div className="flex w-full max-w-4xl flex-col items-center gap-3">
-            {/* CHANGED: Video preview frame on ink bg with accent SHARING badge. */}
+            {/* CHANGED: Live preview — renders the host's outgoing MediaStream. */}
             <div className="relative w-full overflow-hidden rounded-lg border border-line bg-ink">
-              <div className="flex items-center justify-center py-20 text-canvas/60">
-                <div className="text-center">
-                  <Monitor className="mx-auto mb-2 h-10 w-10 opacity-60" />
-                  <p className="text-xs font-medium">
-                    Sharing {selectedSurface}
-                  </p>
+              {localStream ? (
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="block max-h-[60vh] w-full bg-ink"
+                />
+              ) : (
+                <div className="flex items-center justify-center py-20 text-canvas/60">
+                  <div className="text-center">
+                    <Monitor className="mx-auto mb-2 h-10 w-10 opacity-60" />
+                    <p className="text-xs font-medium">
+                      Sharing {selectedSurface}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
               {/* CHANGED: SHARING badge on accent per spec. */}
               <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-canvas shadow">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-canvas" />

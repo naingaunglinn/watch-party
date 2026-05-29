@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Monitor,
   Volume2,
@@ -9,6 +10,7 @@ import {
   Minimize,
   AlertCircle,
   Radio,
+  ArrowLeft,
 } from "lucide-react";
 
 interface ViewerViewProps {
@@ -61,28 +63,37 @@ export default function ViewerView({
   connectionState,
   roomId,
 }: ViewerViewProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const router = useRouter();
+  // CHANGED: Leave the room — navigates back to landing page.
+  const leaveRoom = () => router.push("/");
+  // CHANGED: Plain ref + a callback ref that attaches srcObject the instant the
+  // <video> element mounts. The previous useEffect-on-[remoteStream] approach lost
+  // the race because the <video> element doesn't render until connectionState ===
+  // "connected", but ontrack (which sets remoteStream) fires earlier — so when
+  // the element finally mounts, the effect's deps haven't changed and it doesn't
+  // re-run. A ref callback runs at mount/unmount/identity-change, which is what
+  // we actually want.
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const attachVideo = useCallback(
+    (el: HTMLVideoElement | null) => {
+      const prev = videoRef.current;
+      if (prev && prev !== el) prev.srcObject = null;
+      videoRef.current = el;
+      if (el && remoteStream) {
+        el.srcObject = remoteStream;
+        el.playsInline = true;
+        el.autoplay = true;
+      }
+    },
+    [remoteStream]
+  );
+
   const [muted, setMuted] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
 
   const toast = useTransitionToast(connectionState);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    if (remoteStream) {
-      video.srcObject = remoteStream;
-      video.playsInline = true;
-      video.autoplay = true;
-    }
-    return () => {
-      if (video.srcObject === remoteStream) {
-        video.srcObject = null;
-      }
-    };
-  }, [remoteStream]);
 
   useEffect(() => {
     const handler = () => setFullscreen(!!document.fullscreenElement);
@@ -147,6 +158,14 @@ export default function ViewerView({
       {/* CHANGED: Toolbar on surface tone. */}
       <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
+          {/* CHANGED: Leave button — back arrow returns to landing page. */}
+          <button
+            onClick={leaveRoom}
+            title="Leave room"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-ink"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
           {/* CHANGED: Icon chip on ink so viewer reads as the "host's audience". */}
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-ink">
             <Monitor className="h-3.5 w-3.5 text-canvas" />
@@ -188,7 +207,7 @@ export default function ViewerView({
             onMouseLeave={() => setShowOverlay(false)}
           >
             <video
-              ref={videoRef}
+              ref={attachVideo}
               autoPlay
               playsInline
               muted={muted}

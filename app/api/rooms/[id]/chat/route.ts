@@ -46,7 +46,12 @@ export async function GET(
 
     const messages = await redis.lrange<string>(roomChatKey(id), cursor, -1);
 
-    const parsed = messages.map((m) => JSON.parse(m) as ChatMessage);
+    // Upstash auto-deserializes JSON-shaped values on read; handle both shapes.
+    const parsed = messages.map((m) =>
+      typeof m === "string"
+        ? (JSON.parse(m) as ChatMessage)
+        : (m as unknown as ChatMessage)
+    );
 
     return Response.json({
       messages: parsed,

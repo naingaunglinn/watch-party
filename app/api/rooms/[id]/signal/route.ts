@@ -47,7 +47,11 @@ export async function GET(
 
     const signals = await redis.lrange<string>(roomSignalsKey(id), cursor, -1);
 
-    const parsed = signals.map((s) => JSON.parse(s) as Signal);
+    // Upstash auto-deserializes JSON-shaped values on read, so entries can come
+    // back as either strings (older clients) or already-parsed objects.
+    const parsed = signals.map((s) =>
+      typeof s === "string" ? (JSON.parse(s) as Signal) : (s as unknown as Signal)
+    );
 
     return Response.json({
       signals: parsed,

@@ -62,6 +62,7 @@ export function useSignaling({
   const postSignal = useCallback(
     async (signal: Omit<Signal, "ts">) => {
       try {
+        console.log("[signal] POST", signal.type, "from", signal.from);
         const res = await fetch(`/api/rooms/${roomId}/signal`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -128,6 +129,7 @@ export function useSignaling({
       if (signal.from === role) {
         return;
       }
+      console.log("[signal] RX", signal.type, "from", signal.from);
 
       try {
         if (signal.type === "offer") {

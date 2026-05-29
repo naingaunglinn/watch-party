@@ -62,6 +62,7 @@ function RoomPageInner() {
     handleAnswer,
     handleIceCandidate,
     remoteStream,
+    localStream,
     connectionState,
     connectionQuality,
     isSharing,
@@ -126,6 +127,7 @@ function RoomPageInner() {
           isSharing={isSharing}
           connectionState={connectionState}
           connectionQuality={connectionQuality}
+          localStream={localStream}
           roomId={roomId}
         />
       ) : (
